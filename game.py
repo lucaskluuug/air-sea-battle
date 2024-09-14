@@ -1,7 +1,6 @@
 import pygame
 import random
 
-# Inicializando o Pygame
 pygame.init()
 
 # Configurações da janela
@@ -14,10 +13,29 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+BLUE = (135, 206, 235)
+DARK_GREEN = (34, 139, 34)
+LIGHT_GREEN = (144, 238, 144)
 
-# Definições básicas
 clock = pygame.time.Clock()
 FPS = 60
+
+# Função para desenhar o fundo
+def draw_background(screen):
+    # Céu
+    screen.fill(BLUE)
+
+    # Nuvens
+    pygame.draw.ellipse(screen, WHITE, (100, 50, 200, 100))
+    pygame.draw.ellipse(screen, WHITE, (300, 80, 250, 120))
+    pygame.draw.ellipse(screen, WHITE, (600, 60, 180, 90))
+
+    # Montanhas
+    pygame.draw.polygon(screen, DARK_GREEN, [(0, HEIGHT - 100), (200, HEIGHT - 300), (400, HEIGHT - 100)])
+    pygame.draw.polygon(screen, DARK_GREEN, [(200, HEIGHT - 100), (400, HEIGHT - 300), (600, HEIGHT - 100)])
+    
+    # Grama
+    pygame.draw.rect(screen, LIGHT_GREEN, (0, HEIGHT - 100, WIDTH, 100))
 
 # Classe do Canhão Antiaéreo
 class Cannon:
@@ -87,7 +105,7 @@ class Projectile:
 
     def update(self):
         self.x += self.direction[0] * self.speed
-        self.y -= self.direction[1] * self.speed  # Subtrai para mover para cima
+        self.y -= self.direction[1] * self.speed
         pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), self.radius)
 
     def check_collision(self, airplanes):
@@ -106,29 +124,49 @@ class Airplane:
         self.width, self.height = size
         self.speed = speed
 
+        # Define o formato do losango
+        self.shape = [
+            (self.x + self.width // 2, self.y),
+            (self.x + self.width, self.y + self.height // 2),
+            (self.x + self.width // 2, self.y + self.height),
+            (self.x, self.y + self.height // 2)
+        ]
+
     def draw(self, screen):
-        pygame.draw.rect(screen, BLACK, (self.x, self.y, self.width, self.height))
+        # Desenha a aeronave como um losango
+        pygame.draw.polygon(screen, BLACK, self.shape)
 
     def update(self):
         self.x -= self.speed
+        # Atualiza as coordenadas do losango com base na nova posição
+        self.shape = [
+            (self.x + self.width // 2, self.y),
+            (self.x + self.width, self.y + self.height // 2),
+            (self.x + self.width // 2, self.y + self.height),
+            (self.x, self.y + self.height // 2)
+        ]
 
-# Classe da Horda de Aviões
-class AirplaneHorde:
+# Classe da Frota de Aviões
+class AirplaneFleet:
     def __init__(self):
         self.airplanes = []
-        self.create_horde()  # Cria a primeira horda
+        self.create_fleet()  # Cria a primeira frota
 
-    def create_horde(self):
+    def create_fleet(self):
         num_airplanes = random.randint(1, 5)  # Número aleatório de 1 a 5 aviões
         x = WIDTH  # Todos começam na borda direita da tela
         y = random.randint(50, 150)  # Posição inicial variável no eixo Y
-        size = (60, 30) if random.random() < 0.5 else (40, 20)  # Tipo de avião
+        size = (80, 40) if random.random() < 0.5 else (60, 30)  # Tamanhos maiores para as naves
+
         # Definição da velocidade baseada no tamanho da nave
-        speed = 3 if size == (60, 30) else 5  # Velocidades diferentes para tamanhos diferentes
+        speed = 3 if size == (80, 40) else 5
+
+        # Definir o espaçamento entre as naves com base no tamanho
+        vertical_spacing = 70 if size == (80, 40) else 50
 
         # Criar os aviões de acordo com o número sorteado
         for i in range(num_airplanes):
-            airplane = Airplane(x, y + i * 50, speed, size)  # Aviões alinhados verticalmente
+            airplane = Airplane(x, y + i * vertical_spacing, speed, size)  # Aviões alinhados verticalmente
             self.airplanes.append(airplane)
 
     def update(self):
@@ -138,7 +176,7 @@ class AirplaneHorde:
 
         # Verifica se todas as aeronaves saíram da tela
         if all(airplane.x + airplane.width < 0 for airplane in self.airplanes):
-            self.create_horde()  # Cria uma nova horda se a anterior saiu da tela
+            self.create_fleet()  # Cria uma nova frota se a anterior saiu da tela
 
     def draw(self, screen):
         for airplane in self.airplanes:
@@ -152,15 +190,14 @@ def draw_collision_effect(screen, position):
     pygame.draw.circle(screen, YELLOW, (int(position[0]), int(position[1])), 24)
     pygame.draw.circle(screen, RED, (int(position[0]), int(position[1])), 12)
 
-# Função principal do jogo
 def main():
     running = True
     cannon = Cannon(WIDTH // 2 - 10, HEIGHT - 50)
-    horde = AirplaneHorde()  # Inicia com uma horda de aviões
+    fleet = AirplaneFleet()  # Inicia com uma frota de aviões
     score = 0  # Inicializa o placar
 
     while running:
-        screen.fill(WHITE)
+        draw_background(screen)  # Desenha o fundo
 
         # Desenha o placar
         font = pygame.font.SysFont(None, 36)
@@ -194,15 +231,15 @@ def main():
 
         # Verifica colisões com projétil
         if cannon.projectile:
-            collision, position = cannon.projectile.check_collision(horde.airplanes)
+            collision, position = cannon.projectile.check_collision(fleet.airplanes)
             if collision:
                 draw_collision_effect(screen, position)  # Desenha o efeito de colisão
                 cannon.projectile = None  # Remove o projétil após colisão
                 score += 1  # Incrementa o placar
 
-        # Atualiza e desenha a horda de aviões
-        horde.update()
-        horde.draw(screen)
+        # Atualiza e desenha a frota de aviões
+        fleet.update()
+        fleet.draw(screen)
 
         # Desenha o canhão
         cannon.draw(screen)
