@@ -105,7 +105,7 @@ class Projectile:
 
     def update(self):
         self.x += self.direction[0] * self.speed
-        self.y -= self.direction[1] * self.speed  # Subtrai para mover para cima
+        self.y -= self.direction[1] * self.speed
         pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), self.radius)
 
     def check_collision(self, airplanes):
